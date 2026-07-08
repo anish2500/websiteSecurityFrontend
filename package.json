@@ -1,0 +1,41 @@
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@types/react-toastify": "^4.0.2",
+    "@zxcvbn-ts/core": "^4.1.2",
+    "@zxcvbn-ts/language-common": "^4.1.2",
+    "@zxcvbn-ts/language-en": "^4.1.1",
+    "axios": "^1.13.2",
+    "next": "^16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-hook-form": "^7.69.0",
+    "react-icons": "^5.5.0",
+    "react-toastify": "^11.0.5",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "cypress": "^15.11.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

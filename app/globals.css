@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+}
+
+
+.font-montserrat {
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+}
+
+
+
+.nav-link {
+  font-weight: 500; /* bolder */
+  transition: color 160ms ease, transform 160ms ease;
+}
