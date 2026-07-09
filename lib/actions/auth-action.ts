@@ -43,7 +43,11 @@ export const handleLogin = async (data: LoginData) => {
             message: response.message || 'Login failed'
         }
     } catch (error: Error | any) {
-        return { success: false, message: error.message || 'Login action failed' }
+        return {
+            success: false,
+            message: error.message || 'Login action failed',
+            captchaRequired: Boolean(error.data?.captchaRequired),
+        }
     }
 }
 

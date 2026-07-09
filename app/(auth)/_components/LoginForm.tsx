@@ -3,8 +3,9 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useTransition, useState } from "react";
+import { useTransition, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import ReCAPTCHA from "react-google-recaptcha";
 import { LoginData, loginSchema } from "../schema";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-toastify";
@@ -17,6 +18,8 @@ export default function LoginForm() {
     const [pending, setTransition] = useTransition();
     const [showPassword, setShowPassword] = useState(false);
     const [serverError, setServerError] = useState(""); // State for backend errors
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const captchaRef = useRef<ReCAPTCHA>(null);
 
     const {
         register,
@@ -29,12 +32,16 @@ export default function LoginForm() {
 
     const onSubmit = async (values: LoginData) => {
         try {
-            // 1. Call the backend/server action
-            const res = await handleLogin(values);
+            // 1. Call the backend/server action, attaching the solved CAPTCHA token if we have one
+            const res = await handleLogin({ ...values, captchaToken: captchaToken ?? undefined });
 
             if (!res.success) {
                 // 2. Handle failure from backend with toast
                 toast.error(res.message || "Invalid email or password");
+
+                // A solved token is single-use - clear it and force the user to solve again
+                captchaRef.current?.reset();
+                setCaptchaToken(null);
                 return;
             }
 
@@ -138,10 +145,20 @@ export default function LoginForm() {
                     )}
                 </div>
 
+                {/* CAPTCHA - required on every login attempt */}
+                <div className="flex justify-center">
+                    <ReCAPTCHA
+                        ref={captchaRef}
+                        sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITEKEY as string}
+                        onChange={(token) => setCaptchaToken(token)}
+                        onExpired={() => setCaptchaToken(null)}
+                    />
+                </div>
+
                 {/* Submit */}
                 <button
                     type="submit"
-                    disabled={isSubmitting || pending}
+                    disabled={isSubmitting || pending || !captchaToken}
                     className="w-full py-4 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     {isSubmitting || pending ? (
