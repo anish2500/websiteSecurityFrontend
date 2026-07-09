@@ -19,6 +19,7 @@ export default function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [serverError, setServerError] = useState(""); // State for backend errors
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const [captchaRequired, setCaptchaRequired] = useState(false); 
     const captchaRef = useRef<ReCAPTCHA>(null);
 
     const {
@@ -38,8 +39,8 @@ export default function LoginForm() {
             if (!res.success) {
                 // 2. Handle failure from backend with toast
                 toast.error(res.message || "Invalid email or password");
-
-                // A solved token is single-use - clear it and force the user to solve again
+                if (res.captchaRequired) setCaptchaRequired(true);
+              
                 captchaRef.current?.reset();
                 setCaptchaToken(null);
                 return;
@@ -146,19 +147,24 @@ export default function LoginForm() {
                 </div>
 
                 {/* CAPTCHA - required on every login attempt */}
-                <div className="flex justify-center">
-                    <ReCAPTCHA
-                        ref={captchaRef}
-                        sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITEKEY as string}
-                        onChange={(token) => setCaptchaToken(token)}
-                        onExpired={() => setCaptchaToken(null)}
-                    />
-                </div>
+             {/* CAPTCHA - only shown once the backend flags the account as under attack */}
+{captchaRequired && (
+    <div className="flex justify-center">
+        <ReCAPTCHA
+            ref={captchaRef}
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITEKEY as string}
+            onChange={(token) => setCaptchaToken(token)}
+            onExpired={() => setCaptchaToken(null)}
+        />
+    </div>
+)}
+
 
                 {/* Submit */}
-                <button
-                    type="submit"
-                    disabled={isSubmitting || pending || !captchaToken}
+        <button
+    type="submit"
+    disabled={isSubmitting || pending || (captchaRequired && !captchaToken)}
+
                     className="w-full py-4 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     {isSubmitting || pending ? (

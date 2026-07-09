@@ -17,8 +17,16 @@ export interface UserData {
 
 export const setAuthToken = async (token: string) => {
     const cookieStore = await cookies();
-    cookieStore.set({ name: "auth_token", value: token })
+    cookieStore.set({
+        name: "auth_token",
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+    })
 }
+
 export const getAuthToken = async () => {
     const cookieStore = await cookies();
     const token = cookieStore.get("auth_token")?.value;
@@ -28,8 +36,16 @@ export const setUserData = async (userData: any) => {
     const cookieStore = await cookies();
     // cookie can only store string
     // convert object to string -> JSON.stringify "{}"
-    cookieStore.set({ name: "user_data", value: JSON.stringify(userData) })
+    cookieStore.set({
+        name: "user_data",
+        value: JSON.stringify(userData),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+    })
 }
+
 export const getUserData = async () => {
     const cookieStore = await cookies();
     const userData = cookieStore.get("user_data")?.value;
