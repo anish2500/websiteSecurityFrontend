@@ -11,6 +11,7 @@ const passwordPolicy = z.string()
 export const loginSchema = z.object({
     email: z.email({ message: "Enter a valid email" }),
     password: z.string().min(1, { message: "Password is required" }),
+    captchaToken: z.string().optional(),
 });
 
 export type LoginData = z.infer<typeof loginSchema>;

@@ -2,18 +2,27 @@ import axios from "./axios";
 import { LoginData, RegisterData } from "@/app/(auth)/schema";
 import {API} from "./endpoints";
 
+// Carries the full backend response body (not just the message) so callers
+// can read extra fields like `captchaRequired` after a failed request.
+export class ApiError extends Error {
+    data?: any;
+    constructor(message: string, data?: any) {
+        super(message);
+        this.data = data;
+    }
+}
+
 export const register = async (registerData: RegisterData)=>{
     try {
         const response = await axios.post(
-            API.AUTH.REGISTER, 
+            API.AUTH.REGISTER,
             registerData
         );
-        return response.data; 
+        return response.data;
     }catch (err: Error | any){
-        throw new Error (
-            err.response?.data?.message
-            || err.message
-            || 'Registration Failed'
+        throw new ApiError(
+            err.response?.data?.message || err.message || 'Registration Failed',
+            err.response?.data
         );
     }
 }
@@ -21,15 +30,14 @@ export const register = async (registerData: RegisterData)=>{
 export const login = async (loginData: LoginData)=>{
     try {
         const response = await axios.post(
-            API.AUTH.LOGIN, 
+            API.AUTH.LOGIN,
             loginData
         );
-        return response.data; 
+        return response.data;
     }catch (err: Error | any){
-        throw new Error (
-            err.response?.data?.message
-            || err.message
-            || 'Login Failed'
+        throw new ApiError(
+            err.response?.data?.message || err.message || 'Login Failed',
+            err.response?.data
         );
     }
 }
