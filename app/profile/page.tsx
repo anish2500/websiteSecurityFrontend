@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from "@/context/AuthContext";
 import Link from 'next/link';
-import { handleUpdateProfile } from "@/lib/actions/auth-action";
+import { handleUpdateProfile, handleSetupMfa, handleVerifyMfaSetup, handleDisableMfa } from "@/lib/actions/auth-action";
 import { toast } from "react-toastify";
 
 export default function ProfilePage() {
@@ -12,6 +12,69 @@ export default function ProfilePage() {
   const { user, setUser } = useAuth();
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Two-Factor Authentication enrollment state
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+
+  const startMfaSetup = async () => {
+    setMfaLoading(true);
+    try {
+      const res = await handleSetupMfa();
+      if (res.success) {
+        setQrCode(res.qrCode);
+      } else {
+        toast.error(res.message || 'Could not start MFA setup');
+      }
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const confirmMfaSetup = async () => {
+    if (mfaCode.length !== 6) {
+      toast.error('Enter the 6-digit code from your authenticator app');
+      return;
+    }
+    setMfaLoading(true);
+    try {
+      const res = await handleVerifyMfaSetup(mfaCode);
+      if (res.success) {
+        setBackupCodes(res.backupCodes || []);
+        setQrCode(null);
+        setMfaCode('');
+        setUser({ ...user, mfaEnabled: true });
+        toast.success('Two-factor authentication enabled');
+      } else {
+        toast.error(res.message || 'Invalid code');
+      }
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleDisableTwoFactor = async () => {
+    setMfaLoading(true);
+    try {
+      const res = await handleDisableMfa();
+      if (res.success) {
+        setUser({ ...user, mfaEnabled: false });
+        toast.success('Two-factor authentication disabled');
+      } else {
+        toast.error(res.message || 'Could not disable MFA');
+      }
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const copyBackupCodes = () => {
+    if (!backupCodes) return;
+    navigator.clipboard.writeText(backupCodes.join('\n'));
+    toast.success('Backup codes copied to clipboard');
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -155,9 +218,110 @@ export default function ProfilePage() {
               ))}
             </div>
 
+            {/* Security - Two-Factor Authentication */}
+            <div className="mt-12">
+              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em] mb-8">Security</h2>
+
+              <div className="p-6 rounded-2xl bg-gray-50/50 border border-gray-100">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-700">Two-Factor Authentication</h3>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {user.mfaEnabled
+                        ? 'Enabled - your account requires a code from your authenticator app at login.'
+                        : 'Add an extra layer of security using an authenticator app (Google Authenticator, Authy, etc).'}
+                    </p>
+                  </div>
+
+                  {user.mfaEnabled ? (
+                    <button
+                      onClick={handleDisableTwoFactor}
+                      disabled={mfaLoading}
+                      className="px-5 py-2.5 bg-red-50 text-red-600 text-sm font-bold rounded-xl border border-red-100 hover:bg-red-100 transition disabled:opacity-60"
+                    >
+                      Disable Two-Factor Authentication
+                    </button>
+                  ) : (
+                    !qrCode && !backupCodes && (
+                      <button
+                        onClick={startMfaSetup}
+                        disabled={mfaLoading}
+                        className="px-5 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-emerald-600 transition disabled:opacity-60"
+                      >
+                        Enable Two-Factor Authentication
+                      </button>
+                    )
+                  )}
+                </div>
+
+                {/* Enrollment: QR code + 6-digit confirmation */}
+                {qrCode && (
+                  <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center gap-6">
+                    <img src={qrCode} alt="MFA QR code" className="w-40 h-40 rounded-xl border border-gray-100" />
+                    <div className="flex-1 w-full">
+                      <p className="text-xs text-gray-500 mb-3">
+                        Scan this QR code with your authenticator app, then enter the 6-digit code it generates.
+                      </p>
+                      <div className="flex gap-3">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={mfaCode}
+                          onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="123456"
+                          className="w-32 px-4 py-2.5 rounded-xl border border-gray-200 text-center tracking-[0.3em] font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <button
+                          onClick={confirmMfaSetup}
+                          disabled={mfaLoading || mfaCode.length !== 6}
+                          className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          Verify &amp; Enable
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* One-time backup codes - shown once, then dismissed for good */}
+                {backupCodes && (
+                  <div className="mt-6 pt-6 border-t border-gray-100">
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 mb-4">
+                      <p className="text-xs font-bold text-amber-800">
+                        Save these backup codes now - they will not be shown again.
+                      </p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        Use one if you ever lose access to your authenticator app.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-sm text-gray-700 mb-4">
+                      {backupCodes.map((code) => (
+                        <div key={code} className="px-3 py-2 rounded-lg bg-gray-100 text-center">{code}</div>
+                      ))}
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={copyBackupCodes}
+                        className="px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 hover:bg-gray-50 transition"
+                      >
+                        Copy to clipboard
+                      </button>
+                      <button
+                        onClick={() => setBackupCodes(null)}
+                        className="px-4 py-2 text-xs font-bold rounded-xl bg-gray-900 text-white hover:bg-emerald-600 transition"
+                      >
+                        I've saved these codes
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="mt-12 flex items-center justify-center sm:justify-start">
-              <Link 
-                href="/user/profile" 
+              <Link
+                href="/user/profile"
                 className="group relative px-8 py-3 bg-gray-900 text-white text-sm font-bold rounded-2xl overflow-hidden transition-all hover:pr-12 hover:bg-emerald-600 active:scale-95 shadow-lg shadow-gray-200"
               >
                 <span>Edit Profile</span>
