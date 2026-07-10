@@ -10,7 +10,7 @@ import { LoginData, loginSchema } from "../schema";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-toastify";
 // Import your server action
-import { handleLogin } from "@/lib/actions/auth-action";
+import { handleLogin, handleMfaChallenge } from "@/lib/actions/auth-action";
 
 export default function LoginForm() {
     const router = useRouter();
@@ -21,6 +21,11 @@ export default function LoginForm() {
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const [captchaRequired, setCaptchaRequired] = useState(false); 
     const captchaRef = useRef<ReCAPTCHA>(null);
+    const [mfaStep, setMfaStep] = useState(false);
+    const [mfaChallengeToken, setMfaChallengeToken] = useState("");
+    const [mfaCode, setMfaCode] = useState("");
+    const [mfaSubmitting, setMfaSubmitting] = useState(false);
+
 
     const {
         register,
@@ -31,6 +36,37 @@ export default function LoginForm() {
         mode: "onSubmit",
     });
 
+    // Shared by both the normal login success path and the post-MFA success path -
+    // both end up with the same { data: user } shape and need the same redirect logic.
+    const finishLogin = async (res: { data?: any }) => {
+        console.log('=== LOGIN DEBUG ===');
+        console.log('Login response:', res);
+        console.log('User data:', res.data);
+        console.log('User role:', res.data?.role);
+        console.log('Role type:', typeof res.data?.role);
+
+        // Force string comparison with trimming
+        const userRole = String(res.data?.role || '').trim();
+        console.log('Cleaned role:', `"${userRole}"`);
+        console.log('Is admin:', userRole === 'admin');
+
+        toast.success("Login successful! Redirecting...");
+        await checkAuth(); // Immediately update AuthContext state
+
+        setTransition(() => {
+            // Explicit role check with string conversion
+            const isAdmin = userRole === 'admin';
+            const redirectPath = isAdmin ? '/admin' : '/dashboard';
+
+            console.log('Final redirect decision:');
+            console.log('- isAdmin:', isAdmin);
+            console.log('- redirectPath:', redirectPath);
+
+            router.push(redirectPath);
+            router.refresh(); // Ensure the layout updates with new auth state
+        });
+    };
+
     const onSubmit = async (values: LoginData) => {
         try {
             // 1. Call the backend/server action, attaching the solved CAPTCHA token if we have one
@@ -40,45 +76,89 @@ export default function LoginForm() {
                 // 2. Handle failure from backend with toast
                 toast.error(res.message || "Invalid email or password");
                 if (res.captchaRequired) setCaptchaRequired(true);
-              
+
                 captchaRef.current?.reset();
                 setCaptchaToken(null);
                 return;
             }
+            if (res.mfaRequired) {
+                setMfaChallengeToken(res.mfaChallengeToken);
+                setMfaStep(true);
+                return;
+            }
 
             // 3. Handle success and redirect with toast
-            console.log('=== LOGIN DEBUG ===');
-            console.log('Login response:', res);
-            console.log('User data:', res.data);
-            console.log('User role:', res.data?.role);
-            console.log('Role type:', typeof res.data?.role);
-            
-            // Force string comparison with trimming
-            const userRole = String(res.data?.role || '').trim();
-            console.log('Cleaned role:', `"${userRole}"`);
-            console.log('Is admin:', userRole === 'admin');
-            
-            toast.success("Login successful! Redirecting...");
-            await checkAuth(); // Immediately update AuthContext state
-            
-            setTransition(() => {
-                // Explicit role check with string conversion
-                const isAdmin = userRole === 'admin';
-                const redirectPath = isAdmin ? '/admin' : '/dashboard';
-                
-                console.log('Final redirect decision:');
-                console.log('- isAdmin:', isAdmin);
-                console.log('- redirectPath:', redirectPath);
-                
-                router.push(redirectPath);
-                router.refresh(); // Ensure the layout updates with new auth state
-            });
+            await finishLogin(res);
 
         } catch (err: any) {
             // 4. Handle unexpected network/code errors with toast
             toast.error("Something went wrong. Please try again.");
         }
     };
+
+    const onSubmitMfaCode = async () => {
+        setMfaSubmitting(true);
+        try {
+            const res = await handleMfaChallenge(mfaChallengeToken, mfaCode);
+            if (!res.success) {
+                toast.error(res.message || "Invalid code");
+                setMfaCode("");
+                return;
+            }
+            await finishLogin(res);
+        } finally {
+            setMfaSubmitting(false);
+        }
+    };
+
+    const backToLogin = () => {
+        setMfaStep(false);
+        setMfaChallengeToken("");
+        setMfaCode("");
+    };
+
+    if (mfaStep) {
+        return (
+            <div className="w-full max-w-105 bg-white rounded-2xl shadow-xl px-10 py-12 text-center font-montserrat">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2 font-montserrat">Two-Factor Authentication</h2>
+                <p className="text-sm text-gray-500 mb-8">
+                    Enter the 6-digit code from your authenticator app
+                </p>
+
+                <div className="space-y-6">
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        autoFocus
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="123456"
+                        disabled={mfaSubmitting}
+                        className="w-full px-5 py-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 text-center text-lg tracking-[0.4em] font-mono focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400"
+                    />
+
+                    <button
+                        type="button"
+                        onClick={onSubmitMfaCode}
+                        disabled={mfaSubmitting || mfaCode.length !== 6}
+                        className="w-full py-4 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        {mfaSubmitting ? "Verifying..." : "Verify & Sign in"}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={backToLogin}
+                        disabled={mfaSubmitting}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                    >
+                        Back to login
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-105 bg-white rounded-2xl shadow-xl px-10 py-12 text-center font-montserrat">

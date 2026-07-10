@@ -1,7 +1,7 @@
 "use server";
 import { LoginData, RegisterData } from "@/app/(auth)/schema"
 import { redirect } from "next/navigation";
-import { register, login, whoAmI, updateProfile } from '@/lib/api/auth';
+import { register, login, whoAmI, updateProfile, mfaChallenge, setupMfa, verifyMfaSetup, disableMfa } from '@/lib/api/auth';
 import { clearAuthCookies, setAuthToken, setUserData } from '@/lib/cookie';
 import { revalidatePath } from 'next/cache';
 import { resetPassword, requestPasswordReset } from "@/lib/api/auth";
@@ -25,23 +25,22 @@ export const handleRegister = async (data: RegisterData) => {
         return { success: false, message: error.message || 'Registration action failed' }
     }
 }
-
 export const handleLogin = async (data: LoginData) => {
     try {
         const response = await login(data)
+        if (response.mfaRequired) {
+            return {
+                success: true,
+                mfaRequired: true,
+                mfaChallengeToken: response.mfaChallengeToken,
+            }
+        }
         if (response.success) {
             await setAuthToken(response.token)
             await setUserData(response.data)
-            return {
-                success: true,
-                message: 'Login successful',
-                data: response.data
-            }
+            return { success: true, message: 'Login successful', data: response.data }
         }
-        return {
-            success: false,
-            message: response.message || 'Login failed'
-        }
+        return { success: false, message: response.message || 'Login failed' }
     } catch (error: Error | any) {
         return {
             success: false,
@@ -50,6 +49,54 @@ export const handleLogin = async (data: LoginData) => {
         }
     }
 }
+
+
+export const handleMfaChallenge = async (mfaChallengeToken: string, token: string) => {
+    try {
+        const response = await mfaChallenge(mfaChallengeToken, token);
+        if (response.success) {
+            await setAuthToken(response.token);
+            await setUserData(response.data);
+            return { success: true, message: 'Login successful', data: response.data };
+        }
+        return { success: false, message: response.message || 'Invalid code' };
+    } catch (error: Error | any) {
+        return { success: false, message: error.message || 'MFA challenge failed' };
+    }
+}
+
+export const handleSetupMfa = async () => {
+    try {
+        const response = await setupMfa();
+        return response.success
+            ? { success: true, qrCode: response.data.qrCode }
+            : { success: false, message: response.message || 'MFA setup failed' };
+    } catch (error: Error | any) {
+        return { success: false, message: error.message };
+    }
+}
+
+export const handleVerifyMfaSetup = async (token: string) => {
+    try {
+        const response = await verifyMfaSetup(token);
+        return response.success
+            ? { success: true, backupCodes: response.data.backupCodes }
+            : { success: false, message: response.message || 'Invalid code' };
+    } catch (error: Error | any) {
+        return { success: false, message: error.message };
+    }
+}
+
+export const handleDisableMfa = async () => {
+    try {
+        const response = await disableMfa();
+        return { success: response.success, message: response.message };
+    } catch (error: Error | any) {
+        return { success: false, message: error.message };
+    }
+}
+
+
 
 export const handleLogout = async () => {
     await clearAuthCookies();

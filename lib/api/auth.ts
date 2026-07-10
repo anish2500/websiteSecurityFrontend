@@ -91,3 +91,44 @@ export const resetPassword = async (token: string, newPassword: string) => {
         throw new Error(error.response?.data?.message || error.message || 'Reset password failed');
     }
 }
+
+
+export const setupMfa = async () =>{
+    try {
+        const response = await axios.post(API.AUTH.MFA_SETUP);
+        return response.data; 
+    } catch (err: Error | any) {
+        throw new ApiError(err.response?.data?.message || err.message || 'MFA setup failed', err.response?.data);
+    }
+}
+
+
+export const verifyMfaSetup = async (token: string) => {
+    try {
+        const response = await axios.post(API.AUTH.MFA_VERIFY_SETUP, { token });
+        return response.data;
+    } catch ( err: Error | any){
+        throw new ApiError (err.response?.data?.message || err.message || 'MFA verification failed', err.response?.data);
+
+    }
+}
+
+export const mfaChallenge = async ( mfaChallengeToken: string, token: string) => {
+    try {
+        const response = await axios.post(API.AUTH.MFA_CHALLENGE, { mfaChallengeToken, token});
+        return response.data;
+
+
+    } catch (err: Error | any){
+        throw new ApiError (err.response?.data?.message || err.message || 'MFA challenge failed', err.response?.data);
+    }
+}
+
+export const disableMfa = async () => {
+    try {
+        const response = await axios.post(API.AUTH.MFA_DISABLE);
+        return response.data; 
+    } catch (err: Error | any) {
+        throw new ApiError(err.response?.data?.message || err.message || 'MFA disable failed', err.response?.data);
+    }
+}
