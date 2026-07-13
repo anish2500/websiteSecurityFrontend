@@ -1,8 +1,8 @@
 "use server";
 import { LoginData, RegisterData } from "@/app/(auth)/schema"
 import { redirect } from "next/navigation";
-import { register, login, whoAmI, updateProfile, mfaChallenge, setupMfa, verifyMfaSetup, disableMfa } from '@/lib/api/auth';
-import { clearAuthCookies, setAuthToken, setUserData } from '@/lib/cookie';
+import { register, login, whoAmI, updateProfile, mfaChallenge, setupMfa, verifyMfaSetup, disableMfa, logoutRequest, refreshAccessToken } from '@/lib/api/auth';
+import { clearAuthCookies, getRefreshToken, setAuthToken, setRefreshToken, setUserData } from '@/lib/cookie';
 import { revalidatePath } from 'next/cache';
 import { resetPassword, requestPasswordReset } from "@/lib/api/auth";
 import { updateUser } from "../api/admin/user";
@@ -36,7 +36,8 @@ export const handleLogin = async (data: LoginData) => {
             }
         }
         if (response.success) {
-            await setAuthToken(response.token)
+            await setAuthToken(response.accessToken)
+            await setRefreshToken(response.refreshToken)
             await setUserData(response.data)
             return { success: true, message: 'Login successful', data: response.data }
         }
@@ -55,7 +56,8 @@ export const handleMfaChallenge = async (mfaChallengeToken: string, token: strin
     try {
         const response = await mfaChallenge(mfaChallengeToken, token);
         if (response.success) {
-            await setAuthToken(response.token);
+            await setAuthToken(response.accessToken);
+            await setRefreshToken(response.refreshToken);
             await setUserData(response.data);
             return { success: true, message: 'Login successful', data: response.data };
         }
@@ -99,9 +101,32 @@ export const handleDisableMfa = async () => {
 
 
 export const handleLogout = async () => {
+    const refreshToken = await getRefreshToken();
+    if (refreshToken) {
+        try { await logoutRequest(refreshToken); } catch { /* clear cookies regardless */ }
+    }
     await clearAuthCookies();
     return redirect('/login');
 }
+
+
+export const handleRefreshToken = async () => {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) return { success: false };
+    try {
+        const response = await refreshAccessToken(refreshToken);
+        if (response.success) {
+            await setAuthToken(response.accessToken);
+            await setRefreshToken(response.refreshToken);
+            return { success: true };
+        }
+        return { success: false };
+    } catch {
+        await clearAuthCookies();
+        return { success: false };
+    }
+}
+
 
 
 export async function handleWhoAmI() {
