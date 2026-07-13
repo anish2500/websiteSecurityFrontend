@@ -46,6 +46,27 @@ export const setUserData = async (userData: any) => {
     })
 }
 
+
+export const setRefreshToken = async (token: string) => {
+    const cookieStore = await cookies ();
+    cookieStore.set({
+        name: "refresh_token", 
+        value: token, 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV ==="production",
+        sameSite: "lax", 
+        path: "/", 
+        maxAge: 60*60*24*7, 
+
+    });
+}
+
+
+export const getRefreshToken = async () =>{
+    const cookieStore  = await cookies(); 
+    return cookieStore.get("refresh_token")?.value|| null; 
+}
+
 export const getUserData = async () => {
     const cookieStore = await cookies();
     const userData = cookieStore.get("user_data")?.value;
@@ -59,4 +80,5 @@ export const clearAuthCookies = async () => {
     const cookieStore = await cookies();
     cookieStore.delete("auth_token");
     cookieStore.delete("user_data");
+    cookieStore.delete("refresh_token");
 }

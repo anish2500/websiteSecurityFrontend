@@ -132,3 +132,23 @@ export const disableMfa = async () => {
         throw new ApiError(err.response?.data?.message || err.message || 'MFA disable failed', err.response?.data);
     }
 }
+
+
+export const refreshAccessToken = async (refreshToken: string) =>{
+    try {
+        const response = await axios.post(API.AUTH.REFRESH, { refreshToken});
+        return response.data;
+
+    } catch (err: Error | any) {
+        throw new ApiError(err.response?.data?.message || err.message || 'Token refresh failed', err.response?.data);
+    }
+}
+
+export const logoutRequest = async (refreshToken: string) => {
+    try {
+        const response = await axios.post(API.AUTH.LOGOUT, { refreshToken });
+        return response.data;
+    } catch (err: Error | any) {
+        throw new ApiError(err.response?.data?.message || err.message || 'Logout failed', err.response?.data);
+    }
+}
