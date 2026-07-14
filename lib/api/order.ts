@@ -24,14 +24,16 @@ export interface Order {
     userId: string; 
     items: OrderItem[];
     totalAmount: number; 
+    shippingAddress: string; 
+    phone: string; 
     createdAt: string; 
     updatedAt: string; 
  
 }
 
-export const createOrder = async (items: CreateOrderItem[], totalAmount : number) =>{
+export const createOrder = async (items: CreateOrderItem[], totalAmount : number, shippingAddress: string, phone: string) =>{
     try {
-        const response = await axios.post(API.ORDER.CREATE, {items, totalAmount});
+        const response = await axios.post(API.ORDER.CREATE, {items, totalAmount, shippingAddress, phone});
         return response.data; 
     }catch (error: any){
         throw new Error(error.response?.data?.message || error.message || 'Failed to place order');
