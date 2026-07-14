@@ -8,10 +8,13 @@ import Footer from "../(public)/_components/footer";
 import { useRouter } from "next/navigation";
 
 import { createOrder, CreateOrderItem} from "@/lib/api/order";
+import { useState } from "react";
 
 export default function CartPage() {
   const { cart, loading, updateItem, removeItem } = useCart();
   const router = useRouter();
+  const [shippingAddress, setShippingAddress]  = useState("");
+  const [phone, setPhone] = useState("");
 
 
 
@@ -74,6 +77,10 @@ export default function CartPage() {
   };
 
   const handleCheckout = async () =>{
+    if (!shippingAddress.trim() || !phone.trim()){
+      toast.error("Please enter your shipping address and phone number ");
+      return; 
+    }
     try {
       const items: CreateOrderItem [] = cart.items.map((item)=>({
         plantId: item.plantId._id, 
@@ -83,7 +90,7 @@ export default function CartPage() {
 
       }));
 
-      await createOrder(items, cart.totalAmount);
+      await createOrder(items, cart.totalAmount, shippingAddress, phone);
       toast.success('Order placed successfully!');
       router.push('/orders');
     }catch (error:any){
@@ -185,6 +192,23 @@ export default function CartPage() {
                 <span className="text-lg font-bold text-gray-800">Total</span>
                 <span className="text-2xl font-black text-[#3DC352]">Rs {cart.totalAmount}</span>
               </div>
+
+              <div className="space-y-3 pb-6">
+    <input
+        type="text"
+        value={shippingAddress}
+        onChange={(e) => setShippingAddress(e.target.value)}
+        placeholder="Shipping address"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#3DC352]"
+    />
+    <input
+        type="tel"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        placeholder="Phone number"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#3DC352]"
+    />
+</div>
 
               <button 
               onClick={handleCheckout}
