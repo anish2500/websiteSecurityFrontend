@@ -1,9 +1,36 @@
 "use client"
 import Header from "./_components/Header";
 import Sidebar from "./_components/Sidebar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {useRouter} from "next/navigation"; 
+import {useAuth} from "@/context/AuthContext"; 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const {user, loading} = useAuth();
+    const router = useRouter(); 
+
+    useEffect(()=>{
+        if (loading) return; 
+
+        if(!user){
+            router.replace("/login"); 
+            return; 
+        }
+
+        if (user.role !== "admin"){
+            router.replace("/dashboard");
+        }
+
+
+    }, [loading, user, router]);
+
+
+    if (loading ||!user || user.role !== "admin"){
+        return (
+            <div className="flex w-full min-h-screen items-center justify-center">
+                <p className = "text-gray-500"> Checking access....</p> </div>
+        )
+    }
      return (
         <div className='flex w-full min-h-screen'>
             <div className='page-wrapper flex w-full'>
