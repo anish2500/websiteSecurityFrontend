@@ -27,11 +27,12 @@ export const register = async (registerData: RegisterData)=>{
     }
 }
 
-export const login = async (loginData: LoginData)=>{
+export const login = async (loginData: LoginData, userAgent?: string)=>{
     try {
         const response = await axios.post(
             API.AUTH.LOGIN,
-            loginData
+            loginData,
+            userAgent ? { headers: { "X-Client-User-Agent":  userAgent}}: undefined
         );
         return response.data;
     }catch (err: Error | any){
