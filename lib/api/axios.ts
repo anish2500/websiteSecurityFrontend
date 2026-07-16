@@ -1,6 +1,7 @@
 import axios from "axios";
 import { clearAuthCookies, getAuthToken, getRefreshToken, setAuthToken, setRefreshToken } from "../cookie";
 import { refreshAccessToken } from "./auth";
+import {headers} from "next/headers"; 
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5050';
 const axiosInstance  = axios.create(
@@ -24,6 +25,7 @@ function isExpired(token: string): boolean {
 axiosInstance.interceptors.request.use(
     async (config) => {
         let token = await getAuthToken();
+       
 
         if (token && isExpired(token)) {
             const refreshToken = await getRefreshToken();

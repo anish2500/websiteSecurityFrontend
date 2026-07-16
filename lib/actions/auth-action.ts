@@ -6,6 +6,7 @@ import { clearAuthCookies, getRefreshToken, setAuthToken, setRefreshToken, setUs
 import { revalidatePath } from 'next/cache';
 import { resetPassword, requestPasswordReset } from "@/lib/api/auth";
 import { updateUser } from "../api/admin/user";
+import { headers } from "next/headers";
 
 export const handleRegister = async (data: RegisterData) => {
     try {
@@ -27,7 +28,9 @@ export const handleRegister = async (data: RegisterData) => {
 }
 export const handleLogin = async (data: LoginData) => {
     try {
-        const response = await login(data)
+        const incomingHeaders = await headers(); 
+        const userAgent = incomingHeaders.get("user-agent") || undefined; 
+        const response = await login(data, userAgent); 
         if (response.mfaRequired) {
             return {
                 success: true,
