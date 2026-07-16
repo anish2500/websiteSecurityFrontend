@@ -10,6 +10,8 @@ export const API = {
         MFA_VERIFY_SETUP: '/api/auth/mfa/verify-setup', 
         MFA_CHALLENGE: '/api/auth/mfa/challenge',
         MFA_DISABLE: '/api/auth/mfa/disable', 
+        MAGIC_LINK_REQUEST: '/api/auth/magic-link/request', 
+        MAGIC_LINK_VERIFY: '/api/auth/magic-link/verify', 
         REFRESH: '/api/auth/refresh', 
         LOGOUT: '/api/auth/logout', 
     },

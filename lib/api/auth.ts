@@ -153,3 +153,23 @@ export const logoutRequest = async (refreshToken: string) => {
         throw new ApiError(err.response?.data?.message || err.message || 'Logout failed', err.response?.data);
     }
 }
+
+
+export const requestMagicLink = async (email: string) => {
+    try {
+        const response = await axios.post(API.AUTH.MAGIC_LINK_REQUEST, { email });
+        return response.data;
+    } catch (err: Error | any) {
+        throw new ApiError(err.response?.data?.message || err.message || 'Failed to send login link', err.response?.data);
+    }
+}
+
+export const verifyMagicLink = async (token: string) => {
+    try {
+        const response = await axios.post(API.AUTH.MAGIC_LINK_VERIFY, { token });
+        return response.data;
+    } catch (err: Error | any) {
+        throw new ApiError(err.response?.data?.message || err.message || 'Login link is invalid or expired', err.response?.data);
+    }
+}
+
