@@ -1,7 +1,7 @@
 "use server";
 import { LoginData, RegisterData } from "@/app/(auth)/schema"
 import { redirect } from "next/navigation";
-import { register, login, whoAmI, updateProfile, mfaChallenge, setupMfa, verifyMfaSetup, disableMfa, logoutRequest, refreshAccessToken } from '@/lib/api/auth';
+import { register, login, whoAmI, updateProfile, mfaChallenge, setupMfa, verifyMfaSetup, disableMfa, logoutRequest, refreshAccessToken, requestMagicLink, verifyMagicLink } from '@/lib/api/auth';
 import { clearAuthCookies, getRefreshToken, setAuthToken, setRefreshToken, setUserData } from '@/lib/cookie';
 import { revalidatePath } from 'next/cache';
 import { resetPassword, requestPasswordReset } from "@/lib/api/auth";
@@ -200,3 +200,27 @@ export const handleResetPassword = async (token: string, newPassword: string) =>
         return { success: false, message: error.message || 'Reset password action failed' }
     }
 };
+
+export const handleRequestMagicLink = async (email: string) => {
+    try {
+        const response = await requestMagicLink(email);
+        return { success: true, message: response.message || 'Check your email for a login link' };
+    } catch (error: Error | any) {
+        return { success: false, message: error.message };
+    }
+}
+
+export const handleMagicLogin = async (token: string) => {
+    try {
+        const response = await verifyMagicLink(token);
+        if (response.success) {
+            await setAuthToken(response.accessToken);
+            await setRefreshToken(response.refreshToken);
+            await setUserData(response.data);
+            return { success: true, message: 'Login successful', data: response.data };
+        }
+        return { success: false, message: response.message || 'Login link is invalid or expired' };
+    } catch (error: Error | any) {
+        return { success: false, message: error.message };
+    }
+}

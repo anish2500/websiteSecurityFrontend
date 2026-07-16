@@ -10,7 +10,7 @@ import { LoginData, loginSchema } from "../schema";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-toastify";
 // Import your server action
-import { handleLogin, handleMfaChallenge } from "@/lib/actions/auth-action";
+import { handleLogin, handleMfaChallenge, handleRequestMagicLink } from "@/lib/actions/auth-action";
 
 export default function LoginForm() {
     const router = useRouter();
@@ -25,6 +25,9 @@ export default function LoginForm() {
     const [mfaChallengeToken, setMfaChallengeToken] = useState("");
     const [mfaCode, setMfaCode] = useState("");
     const [mfaSubmitting, setMfaSubmitting] = useState(false);
+    const [magicLinkMode, setMagicLinkMode] = useState(false); 
+    const [magicEmail, setMagicEmail] = useState(""); 
+    const [magicLinkSent, setMagicLinkSent] = useState(false); 
 
 
     const {
@@ -110,6 +113,20 @@ export default function LoginForm() {
             setMfaSubmitting(false);
         }
     };
+    const handleRequestMagicLinkClick = async () => {
+    if (!magicEmail.trim()) {
+        toast.error("Enter your email first");
+        return;
+    }
+    const res = await handleRequestMagicLink(magicEmail);
+    if (res.success) {
+        setMagicLinkSent(true);
+        toast.success(res.message);
+    } else {
+        toast.error(res.message);
+    }
+};
+
 
     const backToLogin = () => {
         setMfaStep(false);
@@ -268,6 +285,37 @@ export default function LoginForm() {
                     Forgot your password?
                 </Link>
             </p>
+            <p className="text-sm text-gray-500 mt-2 text-center">
+    <button type="button" onClick={() => setMagicLinkMode(!magicLinkMode)} className="text-green-600 font-semibold hover:underline">
+        {magicLinkMode ? "Back to password login" : "Log in with email link instead"}
+    </button>
+</p>
+
+{magicLinkMode && (
+    <div className="mt-4 space-y-3">
+        {magicLinkSent ? (
+            <p className="text-sm text-gray-600 text-center">Check your email for a login link.</p>
+        ) : (
+            <>
+                <input
+                    type="email"
+                    value={magicEmail}
+                    onChange={(e) => setMagicEmail(e.target.value)}
+                    placeholder="Email address"
+                    className="w-full px-5 py-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <button
+                    type="button"
+                    onClick={handleRequestMagicLinkClick}
+                    className="w-full py-4 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600"
+                >
+                    Send login link
+                </button>
+            </>
+        )}
+    </div>
+)}
+
         </div>
     );
 }
