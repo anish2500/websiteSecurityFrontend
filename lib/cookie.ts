@@ -82,3 +82,22 @@ export const clearAuthCookies = async () => {
     cookieStore.delete("user_data");
     cookieStore.delete("refresh_token");
 }
+
+
+export const setCsrfToken = async (token: string) =>{
+    const cookieStore = await cookies(); 
+    cookieStore.set({
+        name: "csrf-token", 
+        value: token, 
+        httpOnly: false, 
+        secure: process.env.NODE_ENV === "production", 
+        sameSite: "lax", 
+        path: "/", 
+    });
+}
+
+
+export const getCsrfToken = async () =>{
+    const cookieStore = await cookies(); 
+    return cookieStore.get("csrf-token")?.value || null; 
+}
