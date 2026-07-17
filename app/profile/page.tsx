@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import Link from 'next/link';
 import { handleUpdateProfile, handleSetupMfa, handleVerifyMfaSetup, handleDisableMfa } from "@/lib/actions/auth-action";
 import { toast } from "react-toastify";
+import { getCsrfTokenClient } from '@/lib/utils/csrf-client';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function ProfilePage() {
   const handleDisableTwoFactor = async () => {
     setMfaLoading(true);
     try {
-      const res = await handleDisableMfa();
+      const res = await handleDisableMfa(getCsrfTokenClient());
       if (res.success) {
         setUser({ ...user, mfaEnabled: false });
         toast.success('Two-factor authentication disabled');

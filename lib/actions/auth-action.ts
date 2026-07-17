@@ -7,6 +7,8 @@ import { revalidatePath } from 'next/cache';
 import { resetPassword, requestPasswordReset } from "@/lib/api/auth";
 import { updateUser } from "../api/admin/user";
 import { headers } from "next/headers";
+import { issueCsrfToken, verifyCsrfToken } from "../csrf";
+import { getCsrfTokenClient } from "../utils/csrf-client";
 
 export const handleRegister = async (data: RegisterData) => {
     try {
@@ -40,6 +42,7 @@ export const handleLogin = async (data: LoginData) => {
         }
         if (response.success) {
             await setAuthToken(response.accessToken)
+            await issueCsrfToken();
             await setRefreshToken(response.refreshToken)
             await setUserData(response.data)
             return { success: true, message: 'Login successful', data: response.data }
@@ -60,6 +63,7 @@ export const handleMfaChallenge = async (mfaChallengeToken: string, token: strin
         const response = await mfaChallenge(mfaChallengeToken, token);
         if (response.success) {
             await setAuthToken(response.accessToken);
+            await issueCsrfToken();
             await setRefreshToken(response.refreshToken);
             await setUserData(response.data);
             return { success: true, message: 'Login successful', data: response.data };
@@ -82,6 +86,7 @@ export const handleSetupMfa = async () => {
 }
 
 export const handleVerifyMfaSetup = async (token: string) => {
+    
     try {
         const response = await verifyMfaSetup(token);
         return response.success
@@ -92,7 +97,10 @@ export const handleVerifyMfaSetup = async (token: string) => {
     }
 }
 
-export const handleDisableMfa = async () => {
+export const handleDisableMfa = async (csrfToken: string) => {
+    if (!(await verifyCsrfToken(csrfToken))){
+        return { success: false, message: "Security check failed. Please refresh the page and try again"};
+    }
     try {
         const response = await disableMfa();
         return { success: response.success, message: response.message };
@@ -215,6 +223,7 @@ export const handleMagicLogin = async (token: string) => {
         const response = await verifyMagicLink(token);
         if (response.success) {
             await setAuthToken(response.accessToken);
+            await issueCsrfToken(); 
             await setRefreshToken(response.refreshToken);
             await setUserData(response.data);
             return { success: true, message: 'Login successful', data: response.data };
